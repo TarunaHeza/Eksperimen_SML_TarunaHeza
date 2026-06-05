@@ -1,0 +1,57 @@
+name: CI - MLflow Training MBG
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pandas numpy scikit-learn mlflow matplotlib nltk
+
+      - name: Download NLTK Resources
+        run: |
+          python -c "
+          import nltk
+          nltk.download('stopwords')
+          nltk.download('punkt')
+          nltk.download('punkt_tab')
+          "
+
+      - name: Run MLflow Project
+        run: |
+          cd MLProject
+          mlflow run . \
+            --env-manager=local \
+            -P data_path=data_mbg_preprocessing/data_mbg_preprocessing.csv \
+            -P max_features=5000 \
+            -P C=1.0 \
+            -P solver=lbfgs
+
+      - name: Upload Artifacts to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: |
+            MLProject/artifacts/
+            MLProject/mlruns/
+
+      - name: Commit Artifacts back to Repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update model artifacts from CI [skip ci]"
+          file_pattern: "MLProject/artifacts/*"
